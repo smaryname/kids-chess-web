@@ -139,12 +139,45 @@ export class ChessGame {
   isSquareAttacked(square: Square, attacker: Color) {
     for (const [origin, piece] of this.board) {
       if (piece.color !== attacker) continue;
-      if (piece.type === 'pawn') {
-        const [file, rank] = coords(origin);
-        const direction = attacker === 'white' ? 1 : -1;
-        if ([key(file - 1, rank + direction), key(file + 1, rank + direction)].includes(square)) return true;
-      } else if (this.pseudoMoves(origin, false).some((move) => move.to === square)) {
-        return true;
+      if (this.pieceAttacksSquare(origin, piece, square)) return true;
+    }
+    return false;
+  }
+
+  private pieceAttacksSquare(origin: Square, piece: Piece, square: Square) {
+    const [file, rank] = coords(origin);
+    const [targetFile, targetRank] = coords(square);
+    const fileDistance = targetFile - file;
+    const rankDistance = targetRank - rank;
+
+    if (piece.type === 'pawn') {
+      const direction = piece.color === 'white' ? 1 : -1;
+      return Math.abs(fileDistance) === 1 && rankDistance === direction;
+    }
+    if (piece.type === 'knight') {
+      const absoluteFile = Math.abs(fileDistance);
+      const absoluteRank = Math.abs(rankDistance);
+      return (absoluteFile === 1 && absoluteRank === 2) || (absoluteFile === 2 && absoluteRank === 1);
+    }
+    if (piece.type === 'king') {
+      return Math.max(Math.abs(fileDistance), Math.abs(rankDistance)) === 1;
+    }
+
+    const directions = piece.type === 'bishop'
+      ? [[1, 1], [1, -1], [-1, 1], [-1, -1]]
+      : piece.type === 'rook'
+        ? [[1, 0], [-1, 0], [0, 1], [0, -1]]
+        : [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+    for (const [df, dr] of directions) {
+      let nextFile = file + df;
+      let nextRank = rank + dr;
+      while (valid(nextFile, nextRank)) {
+        const next = key(nextFile, nextRank);
+        if (next === square) return true;
+        if (this.board.has(next)) break;
+        nextFile += df;
+        nextRank += dr;
       }
     }
     return false;
