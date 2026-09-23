@@ -180,7 +180,7 @@ export function KidsChessGame() {
         <header className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
           <div>
             <p className="eyebrow"><Sparkles className="size-4" /> Two-player game</p>
-            <h1 className="font-heading text-3xl font-black tracking-tight sm:text-5xl">Kids Chess Club</h1>
+            <h1 className="font-heading text-3xl font-black tracking-tight sm:text-5xl">Chess PvsP</h1>
           </div>
           <Button aria-label="New game" onClick={restart} className="h-11 rounded-full bg-white/90 px-4 text-[var(--ink)] shadow-sm hover:bg-white" variant="outline">
             <RotateCcw /> <span className="hidden sm:inline">New game</span>
