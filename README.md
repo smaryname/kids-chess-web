@@ -1,4 +1,4 @@
-# Kids Chess Club
+# Chess PvsP
 
 A delightful, local two-player chess game for children ages 4–8. It runs entirely in the browser with no accounts, backend, analytics, advertising, or third-party game services.
 
