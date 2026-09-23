@@ -95,3 +95,17 @@ test('a pinned piece cannot expose its king', () => {
   });
   assert.equal(game.legalMoves(sq('e2')).some((move) => move.to === 'd2'), false);
 });
+
+test('a king cannot capture a piece defended by the enemy king', () => {
+  const game = ChessGame.fromPosition({
+    e1: piece('white', 'king'), e2: piece('black', 'rook'), e3: piece('black', 'king'),
+  });
+  assert.equal(game.legalMoves(sq('e1')).some((move) => move.to === 'e2'), false);
+});
+
+test('a king cannot capture a piece defended along a sliding ray', () => {
+  const game = ChessGame.fromPosition({
+    a1: piece('white', 'king'), b1: piece('black', 'rook'), h1: piece('black', 'rook'), e8: piece('black', 'king'),
+  });
+  assert.equal(game.legalMoves(sq('a1')).some((move) => move.to === 'b1'), false);
+});
