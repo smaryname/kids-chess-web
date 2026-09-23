@@ -13,16 +13,16 @@ const fredoka = Fredoka({
 });
 
 export const metadata: Metadata = {
-  title: 'Kids Chess Club',
+  title: 'Chess PvsP',
   description: 'A friendly two-player chess game made for young children.',
   openGraph: {
-    title: 'Kids Chess Club',
+    title: 'Chess PvsP',
     description: 'Play, learn, smile. A friendly two-player chess game for young children.',
     images: ['https://raw.githubusercontent.com/smaryname/kids-chess-web/main/public/og.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Kids Chess Club',
+    title: 'Chess PvsP',
     description: 'Play, learn, smile. A friendly two-player chess game for young children.',
     images: ['https://raw.githubusercontent.com/smaryname/kids-chess-web/main/public/og.jpg'],
   },
