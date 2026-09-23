@@ -74,9 +74,37 @@ button { font: inherit; }
 .selected-square::after { position: absolute; inset: 7%; content: ''; border: clamp(3px, .6vw, 6px) solid #6c55d9; border-radius: 18%; box-shadow: 0 0 0 3px rgba(255,255,255,.55); }
 .move-marker { position: absolute; z-index: 3; width: 25%; aspect-ratio: 1; border-radius: 999px; background: rgba(79,58,132,.72); box-shadow: 0 1px 0 rgba(255,255,255,.55); }
 .capture-square .move-marker { width: 72%; background: transparent; border: clamp(3px, .65vw, 7px) solid var(--coral); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45); }
+.suggested-from::before, .suggested-to::before { position: absolute; z-index: 4; content: ''; inset: 4%; border: clamp(3px, .6vw, 6px) dashed #ff8b3d; border-radius: 20%; animation: coach-pulse 1s ease-in-out infinite alternate; }
+.suggested-to::before { border-style: solid; box-shadow: inset 0 0 0 4px rgba(255,255,255,.42); }
 .check-pill { background: #fff0e9; border-color: rgba(239,106,103,.45); }
 
-.game-card { position: relative; align-self: center; border: 2px solid rgba(48,37,61,.12); border-radius: 28px; background: rgba(255,255,255,.8); padding: 1.5rem; box-shadow: 0 9px 0 rgba(48,37,61,.11); backdrop-filter: blur(8px); }
+.coach-card { position: relative; align-self: center; border: 2px solid rgba(48,37,61,.12); border-radius: 28px; background: rgba(255,255,255,.84); padding: 1.5rem; box-shadow: 0 9px 0 rgba(48,37,61,.11); backdrop-filter: blur(8px); }
 .sticker { position: absolute; right: -12px; top: -18px; display: grid; place-items: center; width: 54px; aspect-ratio: 1; border-radius: 18px; rotate: 10deg; background: var(--secondary); color: #fff; font-size: 1.8rem; box-shadow: 0 5px 0 #dba93b; }
+.coach-message { display: block; min-height: 6rem; margin-top: .9rem; border-radius: 20px; background: var(--cream); padding: 1rem; color: var(--ink); font-size: .95rem; font-weight: 800; line-height: 1.55; }
+.suggestion-note { margin: .8rem 0 0; color: var(--violet); font-size: .82rem; }
+.coach-actions { display: grid; gap: .65rem; margin-top: 1rem; }
+.help-button { height: 3rem; border-radius: 999px; background: var(--violet); font-weight: 900; }
+.voice-button { height: 2.75rem; border-radius: 999px; background: rgba(255,255,255,.75); }
+.celebration { pointer-events: none; position: fixed; z-index: 50; inset: 0; overflow: hidden; }
+.celebration span { position: absolute; top: 44%; color: var(--secondary); font-size: clamp(2rem, 7vw, 5rem); text-shadow: 0 4px 0 rgba(48,37,61,.12); animation: star-pop 1.05s ease-out forwards; }
+.celebration span:nth-child(1) { left: 12%; --drift: -90px; }
+.celebration span:nth-child(2) { left: 30%; --drift: -145px; animation-delay: .08s; color: var(--coral); }
+.celebration span:nth-child(3) { left: 48%; --drift: -180px; animation-delay: .03s; }
+.celebration span:nth-child(4) { left: 68%; --drift: -125px; animation-delay: .1s; color: var(--teal); }
+.celebration span:nth-child(5) { left: 86%; --drift: -95px; animation-delay: .04s; color: var(--coral); }
 
-@media (max-width: 1023px) { .game-card { display: none; } }
+@keyframes coach-pulse { to { filter: brightness(1.15); transform: scale(.94); } }
+@keyframes star-pop { 0% { opacity: 0; transform: translateY(20px) scale(.35) rotate(-20deg); } 35% { opacity: 1; } 100% { opacity: 0; transform: translateY(var(--drift)) scale(1.15) rotate(22deg); } }
+
+@media (max-width: 1023px) {
+  .coach-card { width: min(100%, 720px); margin: .5rem auto 1.5rem; padding: 1rem 1.1rem; }
+  .coach-card h2 { font-size: 1.25rem; }
+  .coach-message { min-height: 0; padding: .8rem 1rem; }
+  .coach-actions { grid-template-columns: 1fr 1fr; }
+  .sticker { right: 12px; width: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .suggested-from::before, .suggested-to::before, .celebration span { animation: none; }
+  .celebration { display: none; }
+}

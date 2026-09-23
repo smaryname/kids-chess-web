@@ -1,0 +1,17 @@
+{
+  "name": "kids-chess-web-eval",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm run test:engine && pnpm run test:e2e",
+    "test:engine": "node --experimental-strip-types --test ../tests/*.test.ts engine-edge.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:running": "KIDS_CHESS_EVAL_EXTERNAL_SERVER=1 playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

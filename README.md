@@ -11,6 +11,13 @@ A delightful, local two-player chess game for children ages 4–8. It runs entir
 - Responsive touch, mouse, and keyboard-friendly board
 - New-game action and clear turn status
 
+## Milestone 2
+
+- Friendly written feedback after moves
+- Deterministic “Help Me” suggestions with board highlights
+- Optional on-device spoken coaching
+- Lightweight celebrations for captures and special moves
+
 ## Development
 
 ```bash

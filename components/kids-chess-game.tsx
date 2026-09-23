@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw, Sparkles, Trophy } from 'lucide-react';
+import { Lightbulb, MessageCircle, RotateCcw, Sparkles, Trophy, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { boardSquares, ChessGame, pieceSymbol, type PieceType, type Square } from '@/lib/chess';
+import { coachMessageForMove, suggestMove, type MoveSuggestion } from '@/lib/coach';
+import { boardSquares, ChessGame, pieceSymbol, type Move, type PieceType, type Square } from '@/lib/chess';
 
 interface PromotionRequest { from: Square; to: Square }
 const promotionChoices: PieceType[] = ['queen', 'rook', 'bishop', 'knight'];
@@ -14,7 +15,12 @@ export function KidsChessGame() {
   const [game, setGame] = useState(() => new ChessGame());
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<PromotionRequest | null>(null);
+  const [coachMessage, setCoachMessage] = useState('Hi! I can explain moves or give you a gentle hint.');
+  const [suggestion, setSuggestion] = useState<MoveSuggestion | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [celebration, setCelebration] = useState(false);
   const gameRef = useRef(game);
+  const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { gameRef.current = game; }, [game]);
   const legalMoves = useMemo(() => selected ? game.legalMoves(selected) : [], [game, selected]);
   const legalDestinations = useMemo(() => new Set(legalMoves.map((move) => move.to)), [legalMoves]);
@@ -23,7 +29,7 @@ export function KidsChessGame() {
     : game.outcome.type === 'stalemate' ? 'Stalemate — it’s a draw'
     : game.outcome.type === 'check' ? `${capitalize(game.outcome.color)} is in check!`
     : `${capitalize(game.turn)}’s turn`;
-  const hint = game.outcome.type === 'playing' ? (selected ? 'Choose one of the glowing squares' : 'Pick a piece to begin')
+  const hint = game.outcome.type === 'playing' ? (suggestion ? 'Coach highlighted a friendly idea' : selected ? 'Choose one of the glowing squares' : 'Pick a piece to begin')
     : game.outcome.type === 'check' ? 'Protect your king' : 'Great game!';
 
   function tapSquare(square: Square) {
@@ -37,19 +43,68 @@ export function KidsChessGame() {
       return;
     }
     setSelected(game.pieceAt(square)?.color === game.turn ? square : null);
+    if (square !== suggestion?.move.from) setSuggestion(null);
   }
 
   function playMove(from: Square, to: Square, promotionPiece?: PieceType) {
+    const legalMove = game.legalMoves(from).find((move) => move.to === to);
+    if (!legalMove) return;
+    const completedMove: Move = promotionPiece ? { ...legalMove, promotion: promotionPiece } : legalMove;
+    const isSpecial = Boolean(game.pieceAt(to) || completedMove.enPassant || completedMove.castle || completedMove.promotion);
     const next = game.clone();
-    if (next.move(from, to, promotionPiece)) setGame(next);
+    if (next.move(from, to, promotionPiece)) {
+      const message = coachMessageForMove(game, completedMove, next);
+      setGame(next);
+      setCoachMessage(message);
+      speak(message);
+      if (isSpecial || next.outcome.type === 'check' || next.outcome.type === 'checkmate') celebrate();
+    }
     setSelected(null);
     setPromotion(null);
+    setSuggestion(null);
   }
 
   function restart() {
     setGame(new ChessGame());
     setSelected(null);
     setPromotion(null);
+    setSuggestion(null);
+    setCoachMessage('Fresh board! White gets the first move.');
+    window.speechSynthesis?.cancel();
+  }
+
+  function askForHelp() {
+    const nextSuggestion = suggestMove(game);
+    if (!nextSuggestion) {
+      setCoachMessage('The game is finished. You both played wonderfully!');
+      return;
+    }
+    setSuggestion(nextSuggestion);
+    setSelected(nextSuggestion.move.from);
+    setCoachMessage(nextSuggestion.message);
+    speak(nextSuggestion.message);
+  }
+
+  function toggleVoice() {
+    const nextValue = !voiceEnabled;
+    setVoiceEnabled(nextValue);
+    if (nextValue) speak(coachMessage, true);
+    else window.speechSynthesis?.cancel();
+  }
+
+  function speak(message: string, force = false) {
+    if ((!voiceEnabled && !force) || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.rate = 0.92;
+    utterance.pitch = 1.12;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function celebrate() {
+    if (celebrationTimer.current) clearTimeout(celebrationTimer.current);
+    setCelebration(true);
+    celebrationTimer.current = setTimeout(() => setCelebration(false), 1100);
   }
 
   const isFinished = game.outcome.type === 'checkmate' || game.outcome.type === 'stalemate';
@@ -77,12 +132,16 @@ export function KidsChessGame() {
         execute(input) {
           const value = input as { from?: string; to?: string; promotion?: PieceType };
           if (!value.from?.match(/^[a-h][1-8]$/) || !value.to?.match(/^[a-h][1-8]$/)) throw new Error('Use valid squares such as e2 and e4.');
-          const next = gameRef.current.clone();
+          const current = gameRef.current;
+          const legalMove = current.legalMoves(value.from as Square).find((move) => move.to === value.to);
+          const next = current.clone();
           if (!next.move(value.from as Square, value.to as Square, value.promotion)) throw new Error('That move is not legal in the current position.');
           gameRef.current = next;
           setGame(next);
           setSelected(null);
           setPromotion(null);
+          setSuggestion(null);
+          if (legalMove) setCoachMessage(coachMessageForMove(current, value.promotion ? { ...legalMove, promotion: value.promotion } : legalMove, next));
           return { moved: `${value.from}-${value.to}`, turn: next.turn, outcome: next.outcome.type };
         },
       }, { signal: lifecycle.signal });
@@ -98,6 +157,8 @@ export function KidsChessGame() {
           setGame(next);
           setSelected(null);
           setPromotion(null);
+          setSuggestion(null);
+          setCoachMessage('Fresh board! White gets the first move.');
           return { restarted: true, turn: next.turn };
         },
       }, { signal: lifecycle.signal });
@@ -106,22 +167,28 @@ export function KidsChessGame() {
     return () => lifecycle.abort();
   }, []);
 
+  useEffect(() => () => {
+    if (celebrationTimer.current) clearTimeout(celebrationTimer.current);
+    window.speechSynthesis?.cancel();
+  }, []);
+
   return (
-    <main className="min-h-dvh overflow-hidden bg-background text-foreground">
+    <main className="min-h-dvh overflow-x-hidden bg-background text-foreground">
       <div className="sunburst" aria-hidden="true" />
+      {celebration && <div className="celebration" aria-hidden="true"><span>★</span><span>✦</span><span>★</span><span>✦</span><span>★</span></div>}
       <section className="relative mx-auto flex min-h-dvh max-w-6xl flex-col px-3 py-4 sm:px-8 sm:py-7">
         <header className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
           <div>
             <p className="eyebrow"><Sparkles className="size-4" /> Two-player game</p>
             <h1 className="font-heading text-3xl font-black tracking-tight sm:text-5xl">Kids Chess Club</h1>
           </div>
-          <Button onClick={restart} className="h-11 rounded-full bg-white/90 px-4 text-[var(--ink)] shadow-sm hover:bg-white" variant="outline">
+          <Button aria-label="New game" onClick={restart} className="h-11 rounded-full bg-white/90 px-4 text-[var(--ink)] shadow-sm hover:bg-white" variant="outline">
             <RotateCcw /> <span className="hidden sm:inline">New game</span>
           </Button>
         </header>
 
-        <div className="grid flex-1 items-center gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="mx-auto w-full max-w-[min(73vh,720px)]">
+        <div className="grid flex-1 items-center gap-5 lg:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="mx-auto w-full max-w-[min(70vh,720px)]">
             <output className={`turn-pill mb-3 ${game.outcome.type === 'check' ? 'check-pill' : ''}`} aria-live="polite">
               <span className={`piece-dot ${game.turn}`}>{game.turn === 'white' ? '♙' : '♟'}</span>
               <span><strong>{status}</strong><small>{hint}</small></span>
@@ -133,13 +200,15 @@ export function KidsChessGame() {
                   const isSelected = selected === square;
                   const isLegal = legalDestinations.has(square);
                   const isCapture = isLegal && Boolean(piece);
+                  const isSuggestedFrom = suggestion?.move.from === square;
+                  const isSuggestedTo = suggestion?.move.to === square;
                   const row = Math.floor(index / 8);
                   const col = index % 8;
                   return (
                     <button
                       aria-label={piece ? `${capitalize(piece.color)} ${piece.type} on ${square}` : `Empty square ${square}`}
                       aria-pressed={isSelected}
-                      className={`square ${(row + col) % 2 === 0 ? 'light-square' : 'dark-square'} ${isSelected ? 'selected-square' : ''} ${isLegal ? 'legal-square' : ''} ${isCapture ? 'capture-square' : ''}`}
+                      className={`square ${(row + col) % 2 === 0 ? 'light-square' : 'dark-square'} ${isSelected ? 'selected-square' : ''} ${isLegal ? 'legal-square' : ''} ${isCapture ? 'capture-square' : ''} ${isSuggestedFrom ? 'suggested-from' : ''} ${isSuggestedTo ? 'suggested-to' : ''}`}
                       data-square={square}
                       key={square}
                       onClick={() => tapSquare(square)}
@@ -154,13 +223,20 @@ export function KidsChessGame() {
             </div>
           </div>
 
-          <aside className="game-card">
-            <span className="sticker" aria-hidden="true">★</span>
-            <p className="eyebrow">How to play</p>
-            <h2 className="mt-1 font-heading text-2xl font-black">Tap, then move!</h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted-ink)]">Choose one of your pieces. Friendly dots show every safe place it can go.</p>
-            <div className="mt-5 rounded-2xl bg-[var(--cream)] p-4 text-sm font-bold"><span className="mr-2 inline-block size-3 rounded-full bg-[var(--coral)]" /> A bright ring means capture</div>
-            <div className="mt-3 rounded-2xl bg-white/70 p-4 text-sm"><strong>{capitalize(game.turn)} team</strong><p className="mt-1 text-[var(--muted-ink)]">Take your time. Chess is a thinking game.</p></div>
+          <aside className="coach-card" aria-label="Chess coach">
+            <span className="sticker" aria-hidden="true"><MessageCircle /></span>
+            <p className="eyebrow">Friendly coach</p>
+            <h2 className="mt-1 font-heading text-2xl font-black">Think it through!</h2>
+            <output className="coach-message" aria-live="polite">{coachMessage}</output>
+            {suggestion && <p className="suggestion-note"><strong>Coach idea:</strong> {suggestion.move.from} → {suggestion.move.to}</p>}
+            <div className="coach-actions">
+              <Button aria-label="Help me choose a move" className="help-button" disabled={isFinished} onClick={askForHelp}>
+                <Lightbulb /> Help me
+              </Button>
+              <Button aria-label={voiceEnabled ? 'Turn coach voice off' : 'Turn coach voice on'} className="voice-button" onClick={toggleVoice} variant="outline">
+                {voiceEnabled ? <Volume2 /> : <VolumeX />} <span>{voiceEnabled ? 'Voice on' : 'Voice off'}</span>
+              </Button>
+            </div>
           </aside>
         </div>
       </section>
